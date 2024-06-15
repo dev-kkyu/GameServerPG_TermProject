@@ -10,6 +10,8 @@ private:
 	std::array<Session, MAX_USER + MAX_NPC> objects;
 
 public:
+	int getNewClientID();
+	void clientStart(int c_id, ::SOCKET c_socket);
 	void processRecv(int c_id, int recv_size);
 	void disconnect(int c_id);
 

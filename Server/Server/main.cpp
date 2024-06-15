@@ -20,18 +20,6 @@ static ::HANDLE g_handle_iocp;
 
 static GameFramework g_GameFramework;
 
-int get_new_client_id()
-{
-	// Todo : 새 id 받아오기
-	static int id = 0;
-	return id++;
-}
-
-void disconnect(int client_id)
-{
-	// Todo : 클라이언트 소켓의 closesocket 포함한 연결 종료 로직
-}
-
 void worker_thread()
 {
 	while (true) {
@@ -47,7 +35,7 @@ void worker_thread()
 				std::cout << "Accept Error";
 			else {
 				std::cout << "GQCS Error on client[" << key << "]\n";
-				disconnect(static_cast<int>(key));
+				g_GameFramework.disconnect(static_cast<int>(key));
 				if (exp_over->comp_type == EXP_OVERLAPPED::OP_SEND)
 					delete exp_over;
 				continue;
@@ -56,7 +44,7 @@ void worker_thread()
 
 		// 클라이언트의 종료
 		if ((0 == num_bytes) && ((exp_over->comp_type == EXP_OVERLAPPED::OP_RECV) || (exp_over->comp_type == EXP_OVERLAPPED::OP_SEND))) {
-			disconnect(static_cast<int>(key));
+			g_GameFramework.disconnect(static_cast<int>(key));
 			if (exp_over->comp_type == EXP_OVERLAPPED::OP_SEND)
 				delete exp_over;
 			continue;
@@ -65,12 +53,11 @@ void worker_thread()
 		switch (exp_over->comp_type)
 		{
 		case EXP_OVERLAPPED::OP_ACCEPT: {
-			int client_id = get_new_client_id();
+			int client_id = g_GameFramework.getNewClientID();
 			if (client_id != -1) {
-				// Todo : Session 만들어서 관리해주기
 				::CreateIoCompletionPort(reinterpret_cast<HANDLE>(g_accept_socket),
 					g_handle_iocp, client_id, 0);	// Accept 된 소켓 IOCP 핸들에 등록해주기
-				// Todo : Session Recv 시작
+				g_GameFramework.clientStart(client_id, g_accept_socket);
 
 				g_accept_socket = WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);	// 새 Accept용 소켓 만들어 주기
 			}
