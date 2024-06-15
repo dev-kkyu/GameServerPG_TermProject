@@ -7,16 +7,18 @@
 
 #include "protocol_2024.h"
 
-#include "EXP_OVERLAPPED.h"		// 확장 WSAOVERLAPPED 클래스
+#include "GameFramework.h"
 
 // 링크 라이브러리
 #pragma comment(lib, "WS2_32.lib")
 #pragma comment(lib, "MSWSock.lib")
 
-::SOCKET g_server_socket;
-::SOCKET g_accept_socket;
-::EXP_OVERLAPPED g_accept_over{ EXP_OVERLAPPED::OP_ACCEPT };
-::HANDLE g_handle_iocp;
+static ::SOCKET g_server_socket;
+static ::SOCKET g_accept_socket;
+static ::EXP_OVERLAPPED g_accept_over{ EXP_OVERLAPPED::OP_ACCEPT };
+static ::HANDLE g_handle_iocp;
+
+static GameFramework g_GameFramework;
 
 int get_new_client_id()
 {
@@ -82,7 +84,7 @@ void worker_thread()
 			break;
 		}
 		case EXP_OVERLAPPED::OP_RECV: {
-			// Todo : 패킷 재조립 및 수신 패킷 처리
+			g_GameFramework.processRecv(static_cast<int>(key), num_bytes);
 			break;
 		}
 		case EXP_OVERLAPPED::OP_SEND: {
