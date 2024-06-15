@@ -35,9 +35,9 @@ void worker_thread()
 	while (true) {
 		DWORD num_bytes;
 		ULONG_PTR key;
-		WSAOVERLAPPED* wsaover = nullptr;
-		BOOL ret = GetQueuedCompletionStatus(g_handle_iocp, &num_bytes, &key, &wsaover, INFINITE);
-		EXP_OVERLAPPED* exp_over = reinterpret_cast<EXP_OVERLAPPED*>(wsaover);
+		::WSAOVERLAPPED* wsaover = nullptr;
+		BOOL ret = ::GetQueuedCompletionStatus(g_handle_iocp, &num_bytes, &key, &wsaover, INFINITE);
+		EXP_OVERLAPPED* exp_over = reinterpret_cast<EXP_OVERLAPPED*>(wsaover);		// 확장 오버랩드 클래스로 바꿔준다 (IOCP에 등록된 WSAOVER는 다 확장된 WSAOVER이다)
 
 		// GQCS 실패시
 		if (FALSE == ret) {
@@ -66,7 +66,7 @@ void worker_thread()
 			int client_id = get_new_client_id();
 			if (client_id != -1) {
 				// Todo : Session 만들어서 관리해주기
-				CreateIoCompletionPort(reinterpret_cast<HANDLE>(g_accept_socket),
+				::CreateIoCompletionPort(reinterpret_cast<HANDLE>(g_accept_socket),
 					g_handle_iocp, client_id, 0);	// Accept 된 소켓 IOCP 핸들에 등록해주기
 				// Todo : Session Recv 시작
 
@@ -75,9 +75,9 @@ void worker_thread()
 			else {
 				std::cout << "Max user exceeded.\n";
 			}
-			memset(&g_accept_over.wsaover, 0, sizeof(g_accept_over.wsaover));
+			::memset(&g_accept_over.wsaover, 0, sizeof(g_accept_over.wsaover));
 			int addr_size = sizeof(SOCKADDR_IN);
-			AcceptEx(g_server_socket, g_accept_socket, g_accept_over.rw_buf,		// 새로운 접속을 받는다
+			::AcceptEx(g_server_socket, g_accept_socket, g_accept_over.rw_buf,		// 새로운 접속을 받는다
 				0, addr_size + 16, addr_size + 16, nullptr, &g_accept_over.wsaover);
 			break;
 		}
@@ -110,11 +110,11 @@ int main()
 
 	// Todo :  NPC 초기화 함수 호출
 
-	g_handle_iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 0);	// 마지막 인자 0이면 hardware_concurrency 값
-	CreateIoCompletionPort(reinterpret_cast<HANDLE>(g_server_socket), g_handle_iocp, 99999, 0);		// server socket에 accept 완료 통지를 위하여 등록 (키는 안쓰는 키)
+	g_handle_iocp = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 0);	// 마지막 인자 0이면 hardware_concurrency 값
+	::CreateIoCompletionPort(reinterpret_cast<HANDLE>(g_server_socket), g_handle_iocp, 99999, 0);		// server socket에 accept 완료 통지를 위하여 등록 (키는 안쓰는 키)
 	g_accept_socket = WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);			// AcceptEX 사용을 위해 Accept 될 소켓을 먼저 만든다
 	int addr_size = sizeof(SOCKADDR_IN);									// IPv4 주소 전용 구조체의 크기
-	AcceptEx(g_server_socket, g_accept_socket, g_accept_over.rw_buf, 0, addr_size + 16, addr_size + 16, nullptr, &g_accept_over.wsaover);
+	::AcceptEx(g_server_socket, g_accept_socket, g_accept_over.rw_buf, 0, addr_size + 16, addr_size + 16, nullptr, &g_accept_over.wsaover);
 
 	std::vector<std::thread> worker_threads;
 	int num_threads = std::thread::hardware_concurrency();
@@ -125,6 +125,6 @@ int main()
 	for (auto& th : worker_threads)
 		th.join();
 
-	closesocket(g_server_socket);
-	WSACleanup();
+	::closesocket(g_server_socket);
+	::WSACleanup();
 }
