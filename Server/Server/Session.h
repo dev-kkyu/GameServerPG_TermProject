@@ -36,7 +36,7 @@ public:
 
 	lua_State* s_Lua;
 	std::mutex lua_lock;
-	char ai_msg[BUF_SIZE];
+	char ai_msg[CHAT_SIZE];
 
 	std::pair<short, short> sec_idx;		// ºΩ≈Õ ¿Œµ¶Ω∫(x, y)
 

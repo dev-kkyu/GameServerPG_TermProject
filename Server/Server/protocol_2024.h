@@ -1,7 +1,7 @@
 #pragma once							// 추가
 
 constexpr int PORT_NUM = 4000;
-constexpr int BUF_SIZE = 200;			// 추가
+constexpr int BUF_SIZE = 512;			// 추가
 constexpr int NAME_SIZE = 20;
 constexpr int CHAT_SIZE = 300;
 
