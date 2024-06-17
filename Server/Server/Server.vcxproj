@@ -130,11 +130,13 @@
     <ClCompile Include="EXP_OVERLAPPED.cpp" />
     <ClCompile Include="GameFramework.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="NetworkManager.cpp" />
     <ClCompile Include="Session.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EXP_OVERLAPPED.h" />
     <ClInclude Include="GameFramework.h" />
+    <ClInclude Include="NetworkManager.h" />
     <ClInclude Include="protocol_2024.h" />
     <ClInclude Include="Session.h" />
   </ItemGroup>
