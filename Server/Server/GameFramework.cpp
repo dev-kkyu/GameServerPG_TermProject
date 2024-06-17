@@ -453,6 +453,7 @@ void GameFramework::processPacket(int c_id, char* packet)
 				// 새 뷰리스트 생성
 				for (auto p_id : sec_lists) {
 					if (objects[p_id].state != Session::ST_INGAME) continue;
+					if (objects[p_id].isDead) continue;		//-------------------------------------- 죽었으면 시야에서 사라진다.
 					if (false == can_see(c_id, p_id)) continue;
 					if (p_id == c_id) continue;
 					near_list.insert(p_id);
