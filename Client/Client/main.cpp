@@ -1,3 +1,4 @@
+#define SFML_STATIC 1
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
 #include <iostream>
@@ -11,16 +12,22 @@ using namespace std;
 
 sf::TcpSocket s_socket;
 
-constexpr auto SCREEN_WIDTH = 16;
-constexpr auto SCREEN_HEIGHT = 16;
+constexpr auto SCREEN_WIDTH = 20;
+constexpr auto SCREEN_HEIGHT = 20;			//	20 * 20 윈도우
 
-constexpr auto TILE_WIDTH = 65;
-constexpr auto WINDOW_WIDTH = SCREEN_WIDTH * TILE_WIDTH;   // size of window
-constexpr auto WINDOW_HEIGHT = SCREEN_WIDTH * TILE_WIDTH;
+constexpr auto TILE_WIDTH = 32;
+constexpr auto SCALE_WIDTH = 1.4f;
+constexpr int WINDOW_WIDTH = SCREEN_WIDTH * (TILE_WIDTH * SCALE_WIDTH);   // size of window
+constexpr int WINDOW_HEIGHT = SCREEN_WIDTH * (TILE_WIDTH * SCALE_WIDTH);
 
 int g_left_x;
 int g_top_y;
 int g_myid;
+
+int		g_my_hp;
+int		g_my_max_hp;
+int		g_my_exp;
+int		g_my_level;
 
 sf::RenderWindow* g_window;
 sf::Font g_font;
@@ -29,20 +36,28 @@ class OBJECT {
 private:
 	bool m_showing;
 	sf::Sprite m_sprite;
+	sf::Sprite m_attack_sprite;
 
 	sf::Text m_name;
 	sf::Text m_chat;
-	chrono::system_clock::time_point m_mess_end_time;
+	chrono::steady_clock::time_point m_mess_end_time;
+	chrono::steady_clock::time_point m_attack_end_time;
 public:
 	int id;
 	int m_x, m_y;
 	char name[NAME_SIZE];
-	OBJECT(sf::Texture& t, int x, int y, int x2, int y2) {
+	OBJECT(sf::Texture& t, int x, int y, int x2, int y2, sf::Texture& effect) {		//x, y는 시작위치, x2, y2는 거기서부터 픽셀 수
 		m_showing = false;
 		m_sprite.setTexture(t);
-		m_sprite.setTextureRect(sf::IntRect(x, y, x2, y2));
+		m_sprite.setTextureRect(sf::IntRect(x, y, x2, y2));		// 스프라이트 픽셀 사이즈 선택
+		m_sprite.setScale(sf::Vector2f(float(TILE_WIDTH) / x2 * SCALE_WIDTH, float(TILE_WIDTH) / y2 * SCALE_WIDTH));	// 화면에 그릴 사이즈
 		set_name("NONAME");
-		m_mess_end_time = chrono::system_clock::now();
+		m_mess_end_time = chrono::steady_clock::now();
+		m_attack_end_time = chrono::steady_clock::now();
+
+		m_attack_sprite.setTexture(effect);
+		m_attack_sprite.setTextureRect(sf::IntRect(30, 351, 16, 15));		// 스프라이트 픽셀 사이즈 선택
+		m_attack_sprite.setScale(sf::Vector2f(float(TILE_WIDTH) / 16 * SCALE_WIDTH, float(TILE_WIDTH) / 15 * SCALE_WIDTH));	// 화면에 그릴 사이즈
 	}
 	OBJECT() {
 		m_showing = false;
@@ -70,59 +85,84 @@ public:
 	}
 	void draw() {
 		if (false == m_showing) return;
-		float rx = (m_x - g_left_x) * 65.0f + 1;
-		float ry = (m_y - g_top_y) * 65.0f + 1;
+		float rx = (m_x - g_left_x) * (TILE_WIDTH * SCALE_WIDTH) + 1;		// rx, ry는 좌상단 위치
+		float ry = (m_y - g_top_y) * (TILE_WIDTH * SCALE_WIDTH) + 1;
 		m_sprite.setPosition(rx, ry);
 		g_window->draw(m_sprite);
 		auto size = m_name.getGlobalBounds();
-		if (m_mess_end_time < chrono::system_clock::now()) {
-			m_name.setPosition(rx + 32 - size.width / 2, ry - 10);
+		if (m_mess_end_time < chrono::steady_clock::now()) {
+			m_name.setPosition(rx + 32 - size.width / 2, ry - 20);
 			g_window->draw(m_name);
 		}
 		else {
-			m_chat.setPosition(rx + 32 - size.width / 2, ry - 10);
+			m_chat.setPosition(rx + 32 - size.width / 2, ry - 20);
 			g_window->draw(m_chat);
+		}
+
+		if (m_attack_end_time > chrono::steady_clock::now()) {					// 공격이펙트
+			m_attack_sprite.setPosition(rx - (TILE_WIDTH * SCALE_WIDTH), ry);
+			g_window->draw(m_attack_sprite);
+			m_attack_sprite.setPosition(rx, ry - (TILE_WIDTH * SCALE_WIDTH));
+			g_window->draw(m_attack_sprite);
+			m_attack_sprite.setPosition(rx + (TILE_WIDTH * SCALE_WIDTH), ry);
+			g_window->draw(m_attack_sprite);
+			m_attack_sprite.setPosition(rx, ry + (TILE_WIDTH * SCALE_WIDTH));
+			g_window->draw(m_attack_sprite);
 		}
 	}
 	void set_name(const char str[]) {
 		m_name.setFont(g_font);
 		m_name.setString(str);
-		if (id < MAX_USER) m_name.setFillColor(sf::Color(255, 255, 255));
-		else m_name.setFillColor(sf::Color(255, 255, 0));
+		if (id < MAX_USER) m_name.setFillColor(sf::Color(0, 0, 0));		// 플레이어 id는 검정으로 표시
+		else m_name.setFillColor(sf::Color(255, 0, 255));				// NPC는 자홍색
 		m_name.setStyle(sf::Text::Bold);
+		m_name.setScale(0.7f, 0.7f);
 	}
 
 	void set_chat(const char str[]) {
 		m_chat.setFont(g_font);
 		m_chat.setString(str);
-		m_chat.setFillColor(sf::Color(255, 255, 255));
+		m_chat.setFillColor(sf::Color(255, 0, 0));
 		m_chat.setStyle(sf::Text::Bold);
-		m_mess_end_time = chrono::system_clock::now() + chrono::seconds(3);
+		m_mess_end_time = chrono::steady_clock::now() + chrono::seconds(3);
+		m_chat.setScale(0.7f, 0.7f);
+	}
+
+	void Attack() {
+		m_attack_end_time = chrono::steady_clock::now() + chrono::seconds(1);	// 1초간 공격모션
 	}
 };
 
 OBJECT avatar;
 unordered_map <int, OBJECT> players;
 
-OBJECT white_tile;
-OBJECT black_tile;
+OBJECT tile_1;
+OBJECT tile_2;
+OBJECT tile_stone;
 
 sf::Texture* board;
-sf::Texture* pieces;
+sf::Texture* kirby;
+sf::Texture* Beanbon;
+sf::Texture* Knight;
 
 void client_initialize()
 {
 	board = new sf::Texture;
-	pieces = new sf::Texture;
-	board->loadFromFile("chessmap.bmp");
-	pieces->loadFromFile("chess2.png");
-	if (false == g_font.loadFromFile("cour.ttf")) {
+	kirby = new sf::Texture;
+	Beanbon = new sf::Texture;
+	Knight = new sf::Texture;
+	board->loadFromFile("Resources/Forest.png");
+	kirby->loadFromFile("Resources/Kirby.png");
+	Beanbon->loadFromFile("Resources/Beanbon.png");
+	Knight->loadFromFile("Resources/Meta_Knight.png");
+	if (false == g_font.loadFromFile("Resources/cour.ttf")) {
 		cout << "Font Loading Error!\n";
 		exit(-1);
 	}
-	white_tile = OBJECT{ *board, 5, 5, TILE_WIDTH, TILE_WIDTH };
-	black_tile = OBJECT{ *board, 69, 5, TILE_WIDTH, TILE_WIDTH };
-	avatar = OBJECT{ *pieces, 128, 0, 64, 64 };
+	tile_1 = OBJECT{ *board, 38, 3, TILE_WIDTH, TILE_WIDTH, *kirby };
+	tile_2 = OBJECT{ *board, 353, 3, TILE_WIDTH, TILE_WIDTH, *kirby };
+	tile_stone = OBJECT{ *board, 283, 3, TILE_WIDTH, TILE_WIDTH, *kirby };
+	avatar = OBJECT{ *kirby, 8, 11, 20, 19, *kirby };
 	avatar.move(4, 4);
 }
 
@@ -130,7 +170,9 @@ void client_finish()
 {
 	players.clear();
 	delete board;
-	delete pieces;
+	delete kirby;
+	delete Beanbon;
+	delete Knight;
 }
 
 void ProcessPacket(char* ptr)
@@ -147,6 +189,13 @@ void ProcessPacket(char* ptr)
 		g_left_x = packet->x - SCREEN_WIDTH / 2;
 		g_top_y = packet->y - SCREEN_HEIGHT / 2;
 		avatar.show();
+
+		g_my_exp = packet->exp;
+		g_my_hp = packet->hp;
+		g_my_level = packet->level;
+		g_my_max_hp = packet->max_hp;
+
+		std::cout << "login success : id - " << g_myid << ", exp - " << g_my_exp << ", hp - " << g_my_hp << ", level - " << g_my_level << ", max_hp - " << g_my_max_hp << std::endl;
 		break;
 	}
 	case SC_LOGIN_FAIL:
@@ -159,21 +208,28 @@ void ProcessPacket(char* ptr)
 		SC_ADD_OBJECT_PACKET* my_packet = reinterpret_cast<SC_ADD_OBJECT_PACKET*>(ptr);
 		int id = my_packet->id;
 
-		if (id == g_myid) {
+		if (id == g_myid) {				// 나
 			avatar.move(my_packet->x, my_packet->y);
 			g_left_x = my_packet->x - SCREEN_WIDTH / 2;
 			g_top_y = my_packet->y - SCREEN_HEIGHT / 2;
 			avatar.show();
 		}
-		else if (id < MAX_USER) {
-			players[id] = OBJECT{ *pieces, 0, 0, 64, 64 };
+		else if (id < MAX_USER) {		// 다른유저
+			players[id] = OBJECT{ *kirby, 316, 183, 20, 19, *kirby };
 			players[id].id = id;
 			players[id].move(my_packet->x, my_packet->y);
 			players[id].set_name(my_packet->name);
 			players[id].show();
 		}
-		else {
-			players[id] = OBJECT{ *pieces, 256, 0, 64, 64 };
+		else if (id < MAX_USER + MAX_AGRO) {		// Agro NPC
+			players[id] = OBJECT{ *Knight, 0, 0, 22, 22, *kirby };
+			players[id].id = id;
+			players[id].move(my_packet->x, my_packet->y);
+			players[id].set_name(my_packet->name);
+			players[id].show();
+		}
+		else {							// Peace NPC
+			players[id] = OBJECT{ *Beanbon, 0, 0, 27, 27, *kirby };
 			players[id].id = id;
 			players[id].move(my_packet->x, my_packet->y);
 			players[id].set_name(my_packet->name);
@@ -221,9 +277,27 @@ void ProcessPacket(char* ptr)
 
 		break;
 	}
+	case SC_STAT_CHANGE: {
+		SC_STAT_CHANGE_PACKET* my_packet = reinterpret_cast<SC_STAT_CHANGE_PACKET*>(ptr);
+		g_my_exp = my_packet->exp;
+		g_my_hp = my_packet->hp;
+		g_my_level = my_packet->level;
+		g_my_max_hp = my_packet->max_hp;
+
+		std::cout << "stat changed : id - " << g_myid << ", exp - " << g_my_exp << ", hp - " << g_my_hp << ", level - " << g_my_level << ", max_hp - " << g_my_max_hp << std::endl;
+
+		break;
+	}
 	default:
 		printf("Unknown PACKET type [%d]\n", ptr[1]);
 	}
+}
+
+bool isMoveAble(short x, short y)		// 장애물
+{
+	if (x % 5 == 0 and y % 5 == 0)
+		return false;
+	return true;
 }
 
 void process_data(char* net_buf, size_t io_byte)
@@ -275,24 +349,84 @@ void client_main()
 			int tile_x = i + g_left_x;
 			int tile_y = j + g_top_y;
 			if ((tile_x < 0) || (tile_y < 0)) continue;
-			if (0 == (tile_x / 3 + tile_y / 3) % 2) {
-				white_tile.a_move(TILE_WIDTH * i, TILE_WIDTH * j);
-				white_tile.a_draw();
+			if (not isMoveAble(tile_x, tile_y)) {
+				tile_stone.a_move((TILE_WIDTH * SCALE_WIDTH) * i, (TILE_WIDTH * SCALE_WIDTH) * j);
+				tile_stone.a_draw();
+			}
+			else if (0 == (tile_x / 3 + tile_y / 3) % 2) {
+				tile_1.a_move((TILE_WIDTH * SCALE_WIDTH) * i, (TILE_WIDTH * SCALE_WIDTH) * j);
+				tile_1.a_draw();
 			}
 			else
 			{
-				black_tile.a_move(TILE_WIDTH * i, TILE_WIDTH * j);
-				black_tile.a_draw();
+				tile_2.a_move((TILE_WIDTH * SCALE_WIDTH) * i, (TILE_WIDTH * SCALE_WIDTH) * j);
+				tile_2.a_draw();
 			}
 		}
-	avatar.draw();
 	for (auto& pl : players) pl.second.draw();
+	avatar.draw();
+
 	sf::Text text;
 	text.setFont(g_font);
+	text.setFillColor(sf::Color(0, 0, 0));
+	text.setStyle(sf::Text::Bold);
 	char buf[100];
 	sprintf_s(buf, "(%d, %d)", avatar.m_x, avatar.m_y);
 	text.setString(buf);
 	g_window->draw(text);
+
+	{						// 레벨 표시하기
+		sf::Text LevText;
+		LevText.setFont(g_font);
+		LevText.setFillColor(sf::Color::Black);
+		LevText.setStyle(sf::Text::Bold);
+		LevText.setCharacterSize(24);
+		LevText.setPosition(WINDOW_WIDTH * 0.25f, 30.f);
+		LevText.setString("LEVEL: " + to_string(g_my_level) + "	AD: " + to_string(g_my_level * 30));
+
+		g_window->draw(LevText);
+	}
+	{						// 체력바 그리기
+		sf::RectangleShape hpBar(sf::Vector2f(WINDOW_WIDTH * 0.5f, 20.f));
+		hpBar.setPosition(WINDOW_WIDTH * 0.25f, 60.f);
+		hpBar.setFillColor(sf::Color(192, 192, 192));
+		g_window->draw(hpBar);					// 회색 먼저 그리고
+		float hpRatio = static_cast<float>(g_my_hp) / g_my_max_hp;
+		hpBar.setSize(sf::Vector2f(WINDOW_WIDTH * 0.5f * hpRatio, 20.f));
+		hpBar.setFillColor(sf::Color::Red);
+		g_window->draw(hpBar);					// 빨간색 그리기
+
+		sf::Text hpText;
+		hpText.setFont(g_font);
+		hpText.setFillColor(sf::Color::Black);
+		hpText.setStyle(sf::Text::Bold);
+		hpText.setCharacterSize(18);
+		hpText.setPosition(WINDOW_WIDTH * 0.25f, 55.f);
+		hpText.setString("HP: " + std::to_string(g_my_hp) + " / " + std::to_string(g_my_max_hp));
+
+		g_window->draw(hpText);
+	}
+	{						// 경험치바 그리기
+		sf::RectangleShape expBar(sf::Vector2f(WINDOW_WIDTH * 0.5f, 15.f));
+		expBar.setPosition(WINDOW_WIDTH * 0.25f, 80.f);
+		expBar.setFillColor(sf::Color(192, 192, 192));
+		g_window->draw(expBar);					// 회색 먼저 그리고
+		int need_exp = pow(2, g_my_level - 1) * 100;
+		float expRatio = static_cast<float>(g_my_exp) / need_exp;
+		expBar.setSize(sf::Vector2f(WINDOW_WIDTH * 0.5f * expRatio, 15.f));
+		expBar.setFillColor(sf::Color::Yellow);
+		g_window->draw(expBar);					// 노란색 그리기
+
+		sf::Text expText;
+		expText.setFont(g_font);
+		expText.setFillColor(sf::Color::Black);
+		expText.setStyle(sf::Text::Bold);
+		expText.setCharacterSize(18);
+		expText.setPosition(WINDOW_WIDTH * 0.25f, 75.f);
+		expText.setString("EXP: " + std::to_string(g_my_exp) + " / " + std::to_string(need_exp));
+
+		g_window->draw(expText);
+	}
 }
 
 void send_packet(void* packet)
@@ -339,6 +473,9 @@ int main()
 	sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "2D CLIENT");
 	g_window = &window;
 
+	auto last_move = chrono::steady_clock::now() - 1s;
+	auto last_attack = chrono::steady_clock::now() - 1s;
+
 	while (window.isOpen())
 	{
 		sf::Event event;
@@ -361,16 +498,34 @@ int main()
 				case sf::Keyboard::Down:
 					direction = 1;
 					break;
+
+				case sf::Keyboard::A: {		// 공격 키
+					auto now_time = chrono::steady_clock::now();
+					if (now_time >= last_attack + 1s) {		// 1초에 한번만 공격
+						last_attack = now_time;
+						CS_ATTACK_PACKET p;
+						p.size = sizeof(p);
+						p.type = CS_ATTACK;
+						send_packet(&p);
+						avatar.Attack();
+					}
+					break;
+				}
+
 				case sf::Keyboard::Escape:
 					window.close();
 					break;
 				}
 				if (-1 != direction) {
-					CS_MOVE_PACKET p;
-					p.size = sizeof(p);
-					p.type = CS_MOVE;
-					p.direction = direction;
-					send_packet(&p);
+					auto now_time = chrono::steady_clock::now();
+					//if (now_time >= last_move + 1s) {		// 1초에 한번만 이동
+						//last_move = now_time;
+						CS_MOVE_PACKET p;
+						p.size = sizeof(p);
+						p.type = CS_MOVE;
+						p.direction = direction;
+						send_packet(&p);
+					//}
 				}
 
 			}

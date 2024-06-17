@@ -51,6 +51,11 @@ struct CS_CHAT_PACKET {
 	char	mess[CHAT_SIZE];
 };
 
+struct CS_ATTACK_PACKET {
+	unsigned short size;
+	char	type;
+};
+
 struct CS_TELEPORT_PACKET {			// 랜덤으로 텔레포트 하는 패킷, 동접 테스트에 필요
 	unsigned short size;
 	char	type;
