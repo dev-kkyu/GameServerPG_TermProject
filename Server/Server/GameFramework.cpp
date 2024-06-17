@@ -20,7 +20,7 @@ void GameFramework::clientStart(int c_id, ::SOCKET c_socket)
 	objects[c_id].name[0] = '\0';
 	objects[c_id].prev_remain = 0;
 	objects[c_id].socket = c_socket;
-	//objects[c_id].sec_idx = { -1, -1 };
+	objects[c_id].sec_idx = { -1, -1 };
 	objects[c_id].doRecv();
 }
 

@@ -5,6 +5,9 @@
 #include <atomic>
 #include <unordered_set>
 
+#include "Dependencies/include/lua.hpp"
+#pragma comment(lib, "Dependencies/lua54.lib")
+
 #include "EXP_OVERLAPPED.h"		// 확장 WSAOVERLAPPED 클래스
 
 class Session
@@ -33,8 +36,8 @@ public:
 	std::unordered_set<int> view_list;
 	std::mutex view_lock;
 
-	//lua_State* s_ua;
-	//std::mutex lua_lock;
+	lua_State* s_ua;
+	std::mutex lua_lock;
 	char ai_msg[BUF_SIZE];
 
 	std::pair<short, short> sec_idx;		// 섹터 인덱스(x, y)
