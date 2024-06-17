@@ -233,7 +233,7 @@ void process_data(char* net_buf, size_t io_byte)
 	static size_t saved_packet_size = 0;
 	static char packet_buffer[BUF_SIZE];
 
-	while (0 != io_byte) {
+	while (io_byte > 1) {
 		if (0 == in_packet_size) in_packet_size = reinterpret_cast<unsigned short*>(ptr)[0];
 		if (io_byte + saved_packet_size >= in_packet_size) {
 			memcpy(packet_buffer + saved_packet_size, ptr, in_packet_size - saved_packet_size);
