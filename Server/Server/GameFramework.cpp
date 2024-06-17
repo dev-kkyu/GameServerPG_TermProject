@@ -306,8 +306,8 @@ void GameFramework::callbackDBLogin(int c_id, const char* name, int xy)
 		strcpy_s(objects[c_id].name, name);
 		{
 			std::lock_guard<std::mutex> ll{ objects[c_id].socket_lock };
-			objects[c_id].x = LOWORD(xy);		// 여기에 넣어줬다.
-			objects[c_id].y = HIWORD(xy);
+			objects[c_id].x = objects[c_id].start_x = LOWORD(xy);		// 여기에 넣어줬다.
+			objects[c_id].y = objects[c_id].start_y = HIWORD(xy);
 			objects[c_id].state = Session::ST_INGAME;
 		}
 
