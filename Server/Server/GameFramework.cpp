@@ -151,8 +151,7 @@ void GameFramework::processRecv(int c_id, int recv_size)
 	int remain_data = recv_size + objects[c_id].prev_remain;
 	EXP_OVERLAPPED* exp_over = &objects[c_id].recv_over;
 	char* p = exp_over->rw_buf;
-	// Todo : 패킷 재조립을 short용으로 바꿔줘야 한다.
-	while (remain_data > 0) {
+	while (remain_data > 1) {
 		int packet_size = reinterpret_cast<unsigned short*>(p)[0];
 		if (packet_size <= remain_data) {
 			processPacket(c_id, p);
@@ -307,7 +306,7 @@ void GameFramework::callbackDBLogin(int c_id, const char* name, int xy)
 
 void GameFramework::processPacket(int c_id, char* packet)
 {
-	switch (packet[1]) {
+	switch (packet[2]) {
 	case CS_LOGIN: {
 		CS_LOGIN_PACKET* p = reinterpret_cast<CS_LOGIN_PACKET*>(packet);
 
