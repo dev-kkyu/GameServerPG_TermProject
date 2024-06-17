@@ -11,6 +11,16 @@ void worker_thread()
 	g_NetworkManager.run();
 }
 
+void do_timer()
+{
+	// Todo
+}
+
+void do_db()
+{
+	// Todo
+}
+
 int main()
 {
 	::setlocale(LC_ALL, "korean");		// DB 오류출력 한글 위해서. 네트워크 오류 출력에도 필요
@@ -20,6 +30,12 @@ int main()
 	worker_threads.reserve(num_threads);
 	for (int i = 0; i < num_threads; ++i)
 		worker_threads.emplace_back(worker_thread);
+
+	std::thread timer_thread{ do_timer };
+	std::thread db_thread{ do_db };
+
+	db_thread.join();
+	timer_thread.join();
 
 	for (auto& th : worker_threads)
 		th.join();
