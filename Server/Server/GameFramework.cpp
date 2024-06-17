@@ -205,6 +205,16 @@ void GameFramework::processPacket(int c_id, char* packet)
 
 void GameFramework::wakeUpNPC(int npc_id, int waker)
 {
+	EXP_OVERLAPPED* exover = new EXP_OVERLAPPED{ EXP_OVERLAPPED::OP_PLAYER_MOVE };
+	exover->ai_target_obj = waker;
+	PostQueuedCompletionStatus(iocp_handle, 1, npc_id, &exover->wsaover);
+
+	//if (clients[npc_id]._is_active) return;
+	//bool old_state = false;
+	//if (false == atomic_compare_exchange_strong(&clients[npc_id]._is_active, &old_state, true))
+	//	return;
+	//TIMER_EVENT ev{ npc_id, chrono::system_clock::now(), EV_RANDOM_MOVE, 0 };
+	//timer_queue.push(ev);
 }
 
 bool GameFramework::is_pc(int object_id)
