@@ -5,11 +5,9 @@
 #include <atomic>
 #include <unordered_set>
 
-#include "Dependencies/include/lua.hpp"
-#pragma comment(lib, "Dependencies/lua54.lib")
-
 #include "EXP_OVERLAPPED.h"		// 확장 WSAOVERLAPPED 클래스
 
+struct lua_State;
 class Session
 {
 public:

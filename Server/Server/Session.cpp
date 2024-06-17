@@ -1,5 +1,8 @@
 #include "Session.h"
 
+#include "Dependencies/include/lua.hpp"
+#pragma comment(lib, "Dependencies/lua54.lib")
+
 Session::Session()
 	: recv_over{ EXP_OVERLAPPED::OP_RECV }, name{}, ai_msg{}
 {
