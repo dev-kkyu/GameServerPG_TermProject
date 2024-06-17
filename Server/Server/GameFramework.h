@@ -21,10 +21,14 @@ private:
 	static constexpr int SECTOR_RANGE = 20;
 
 private:
+	const HANDLE& iocp_handle;
+
 	std::array<Session, MAX_USER + MAX_NPC> objects;
 	SECTOR sectors[W_WIDTH / SECTOR_RANGE][W_HEIGHT / SECTOR_RANGE];
 
 public:
+	GameFramework(const HANDLE& h_iocp);
+
 	int getNewClientID();
 	void clientStart(int c_id, ::SOCKET c_socket);
 	void processRecv(int c_id, int recv_size);

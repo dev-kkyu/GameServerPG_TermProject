@@ -10,6 +10,7 @@
 #include <iostream>
 
 NetworkManager::NetworkManager(unsigned short port)
+	: gameFramework{ handle_iocp }
 {
 	::WSADATA WSAData;
 	::WSAStartup(MAKEWORD(2, 2), &WSAData);

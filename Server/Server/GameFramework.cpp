@@ -7,6 +7,11 @@ std::pair<int, int> SECTOR::getSectorIndex(int pos_x, int pos_y)
 	return { ret_x, ret_y };
 }
 
+GameFramework::GameFramework(const HANDLE& h_iocp)
+	: iocp_handle{ h_iocp }
+{
+}
+
 int GameFramework::getNewClientID()
 {
 	for (int i = 0; i < MAX_USER; ++i) {
