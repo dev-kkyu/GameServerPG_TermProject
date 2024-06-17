@@ -32,6 +32,7 @@ public:
 
 private:
 	void processPacket(int c_id, char* packet);
+	void wakeUpNPC(int npc_id, int waker);
 
 
 private:	// 헬퍼 함수들

@@ -90,6 +90,116 @@ void GameFramework::disconnect(int c_id)
 
 void GameFramework::processPacket(int c_id, char* packet)
 {
+	switch (packet[1]) {
+	case CS_LOGIN: {
+		CS_LOGIN_PACKET* p = reinterpret_cast<CS_LOGIN_PACKET*>(packet);
+
+		//auto ptr = std::make_shared<DB_EVENT_LOGIN>(c_id, p->name);
+		//db_queue.push(ptr);		// DB큐에 넣어서 이름을 확인해 준다...
+
+		break;
+	}
+	case CS_MOVE: {
+		if (objects[c_id].sec_idx.first < 0 or objects[c_id].sec_idx.second < 0) {
+			closesocket(objects[c_id].socket);	// 로그인이 되지 않은 클라이언트의 움직임이 관찰되면 지체없이 close한다.
+			break;
+		}
+		CS_MOVE_PACKET* p = reinterpret_cast<CS_MOVE_PACKET*>(packet);
+		objects[c_id].last_move_time = p->move_time;
+		short x = objects[c_id].x;
+		short y = objects[c_id].y;
+		switch (p->direction) {
+		case 0: if (y > 0) y--; break;
+		case 1: if (y < W_HEIGHT - 1) y++; break;
+		case 2: if (x > 0) x--; break;
+		case 3: if (x < W_WIDTH - 1) x++; break;
+		}
+		objects[c_id].x = x;
+		objects[c_id].y = y;
+
+		// 내 좌표에 따른 섹터 위치가 바뀌었으면, 바꿔준다
+		std::pair<int, int> bef_sec = objects[c_id].sec_idx;
+		std::pair<int, int> aft_sec = SECTOR::getSectorIndex(x, y);
+		if (bef_sec != aft_sec) {
+			sectors[bef_sec.first][bef_sec.second].sector_m.lock();
+			sectors[bef_sec.first][bef_sec.second].object_list.erase(c_id);
+			sectors[bef_sec.first][bef_sec.second].sector_m.unlock();
+
+			sectors[aft_sec.first][aft_sec.second].sector_m.lock();
+			sectors[aft_sec.first][aft_sec.second].object_list.insert(c_id);
+			sectors[aft_sec.first][aft_sec.second].sector_m.unlock();
+
+			objects[c_id].sec_idx = aft_sec;
+		}
+
+		std::unordered_set<int> near_list;
+		objects[c_id].view_lock.lock();
+		std::unordered_set<int> old_vlist = objects[c_id].view_list;
+		objects[c_id].view_lock.unlock();
+
+		// 좌우상하 1섹터씩 더 보고, 내 근처의 총 9개 섹터를 비교한다
+		for (int i = aft_sec.first - 1; i <= aft_sec.first + 1; ++i) {
+			if (i < 0 or i > W_WIDTH / SECTOR_RANGE - 1)	// 범위를 벗어난 곳은 탐색하지 않는다
+				continue;
+			for (int j = aft_sec.second - 1; j <= aft_sec.second + 1; ++j) {
+				if (j < 0 or j > W_HEIGHT / SECTOR_RANGE - 1)
+					continue;
+				sectors[i][j].sector_m.lock();
+				std::unordered_set<int> sec_lists = sectors[i][j].object_list;
+				sectors[i][j].sector_m.unlock();
+
+				// 새 뷰리스트 생성
+				for (auto p_id : sec_lists) {
+					if (objects[p_id].state != Session::ST_INGAME) continue;
+					if (false == can_see(c_id, p_id)) continue;
+					if (p_id == c_id) continue;
+					near_list.insert(p_id);
+				}
+			}
+		}
+
+		//for (auto& cl : objects) {
+		//	if (cl._state != ST_INGAME) continue;
+		//	if (cl._id == c_id) continue;
+		//	if (can_see(c_id, cl._id))
+		//		near_list.insert(cl._id);
+		//}
+
+		objects[c_id].send_move_packet(objects[c_id]);
+
+		for (auto& pl : near_list) {
+			auto& cpl = objects[pl];
+			if (is_pc(pl)) {
+				cpl.view_lock.lock();
+				if (objects[pl].view_list.count(c_id)) {
+					cpl.view_lock.unlock();
+					objects[pl].send_move_packet(objects[c_id]);
+				}
+				else {
+					cpl.view_lock.unlock();
+					objects[pl].send_add_player_packet(objects[c_id]);
+				}
+			}
+			else wakeUpNPC(pl, c_id);
+
+			if (old_vlist.count(pl) == 0)
+				objects[c_id].send_add_player_packet(objects[pl]);
+		}
+
+		for (auto& pl : old_vlist) {
+			if (0 == near_list.count(pl)) {
+				objects[c_id].send_remove_player_packet(pl);
+				if (is_pc(pl))
+					objects[pl].send_remove_player_packet(c_id);
+			}
+		}
+	}
+				break;
+	}
+}
+
+void GameFramework::wakeUpNPC(int npc_id, int waker)
+{
 }
 
 bool GameFramework::is_pc(int object_id)
