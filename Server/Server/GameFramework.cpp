@@ -220,6 +220,87 @@ void GameFramework::tryNpcMove(int npc_id)
 	//}
 }
 
+void GameFramework::npcBye(int to, int from)
+{
+	objects[to].send_chat_packet(objects[from], objects[from].ai_msg);
+}
+
+void GameFramework::callbackPlayerMove(int npc_id, int p_id)
+{
+	objects[npc_id].lua_lock.lock();
+	auto L = objects[npc_id].s_Lua;
+	lua_getglobal(L, "event_player_move");
+	lua_pushnumber(L, p_id);
+	lua_pcall(L, 1, 0, 0);
+	//lua_pop(L, 1);	// 리턴값이 없는 호출이기에 pop하지 않는다.
+	objects[npc_id].lua_lock.unlock();
+}
+
+void GameFramework::callbackDBLogin(int c_id, const char* name, int xy)
+{
+	if (name[0]) {	// 실패한 로그인은 0번인덱스에 0 넣어둠
+		strcpy_s(objects[c_id].name, name);
+		{
+			std::lock_guard<std::mutex> ll{ objects[c_id].socket_lock };
+			objects[c_id].x = LOWORD(xy);		// 여기에 넣어줬다.
+			objects[c_id].y = HIWORD(xy);
+			objects[c_id].state = Session::ST_INGAME;
+		}
+
+		// 섹터 위치 삽입
+		auto s_idx = SECTOR::getSectorIndex(objects[c_id].x, objects[c_id].y);
+		objects[c_id].sec_idx = s_idx;
+		sectors[s_idx.first][s_idx.second].sector_m.lock();
+		sectors[s_idx.first][s_idx.second].object_list.insert(c_id);
+		sectors[s_idx.first][s_idx.second].sector_m.unlock();
+
+		objects[c_id].send_login_info_packet();
+		//for (auto& pl : clients) {
+		//	{
+		//		lock_guard<mutex> ll(pl._s_lock);
+		//		if (ST_INGAME != pl._state) continue;
+		//	}
+		//	if (pl._id == c_id) continue;
+		//	if (false == can_see(c_id, pl._id))
+		//		continue;
+		//	if (is_pc(pl._id)) pl.send_add_player_packet(c_id);
+		//	else WakeUpNPC(pl._id, c_id);		// 근처의 npc를 깨운다
+		//	clients[c_id].send_add_player_packet(pl._id);
+		//}
+
+		// 좌우상하 1섹터씩 더 보고, 내 근처의 총 9개 섹터를 비교해서 시야 내에 있는 플레이어에게 add패킷 전송
+		// 섹터 내에 있으면, ST_INGAME으로 판단
+		for (int i = s_idx.first - 1; i <= s_idx.first + 1; ++i) {
+			if (i < 0 or i > W_WIDTH / SECTOR_RANGE - 1)	// 범위를 벗어난 곳은 탐색하지 않는다
+				continue;
+			for (int j = s_idx.second - 1; j <= s_idx.second + 1; ++j) {
+				if (j < 0 or j > W_HEIGHT / SECTOR_RANGE - 1)
+					continue;
+				sectors[i][j].sector_m.lock();
+				std::unordered_set<int> sec_lists = sectors[i][j].object_list;
+				sectors[i][j].sector_m.unlock();
+
+				for (auto p_id : sec_lists) {
+					{
+						std::lock_guard<std::mutex> ll(objects[p_id].socket_lock);
+						if (Session::ST_INGAME != objects[p_id].state) continue;
+					}
+					if (false == can_see(p_id, c_id)) continue;
+					if (p_id == c_id) continue;
+					if (is_pc(p_id)) objects[p_id].send_add_player_packet(objects[c_id]);
+					else wakeUpNPC(p_id, c_id);		// 근처의 npc를 깨운다
+					objects[c_id].send_add_player_packet(objects[p_id]);
+				}
+			}
+		}
+	}
+	else {		// 로그인 실패
+		//cout << c_id << ": disconnect" << endl;
+		objects[c_id].send_login_fail_packet();	// fail 패킷 보낸다
+		// 클로즈를 서버에서 시켜주지 말고, fail packet만 보내자
+	}
+}
+
 void GameFramework::processPacket(int c_id, char* packet)
 {
 	switch (packet[1]) {

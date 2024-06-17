@@ -47,6 +47,9 @@ public:
 	void disconnect(int c_id);
 
 	void tryNpcMove(int npc_id);
+	void npcBye(int to, int from);	// OP_AI_BYE
+	void callbackPlayerMove(int npc_id, int p_id);	// OP_PLAYER_MOVE -> 플레이어가 움직이면 근처 NPC에게 알리고, 스크립트에서 충돌이면 hello해주는거
+	void callbackDBLogin(int c_id, const char* name, int xy);			// OP_DB_LOGIN
 
 private:
 	void processPacket(int c_id, char* packet);
