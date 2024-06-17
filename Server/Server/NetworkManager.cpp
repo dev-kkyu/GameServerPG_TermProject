@@ -155,8 +155,9 @@ void NetworkManager::runWorker()
 		}
 
 		case EXP_OVERLAPPED::OP_DB_LOGIN: {
-			gameFramework.callbackDBLogin(static_cast<int>(key), exp_over->rw_buf, exp_over->ai_target_obj);
-			delete exp_over;
+			EXP_EXP_OVER* ex = reinterpret_cast<EXP_EXP_OVER*>(exp_over);
+			gameFramework.callbackDBLogin(static_cast<int>(key), ex);
+			delete ex;
 			break;
 		}
 
@@ -233,7 +234,7 @@ void NetworkManager::runDB()
 	// Set login timeout to 5 seconds  
 	SQLSetConnectAttr(hdbc, SQL_LOGIN_TIMEOUT, (SQLPOINTER)5, 0);
 	// Connect to data source
-	retcode = SQLConnect(hdbc, (SQLWCHAR*)L"2020180051_GSHW", SQL_NTS, (SQLWCHAR*)NULL, 0, NULL, 0);
+	retcode = SQLConnect(hdbc, (SQLWCHAR*)L"2020180051_GS_TERMPROJECT", SQL_NTS, (SQLWCHAR*)NULL, 0, NULL, 0);
 	if (db_error_check(retcode)) {
 		std::cout << "DB Connect 실패!" << std::endl;
 		disp_error(hdbc, SQL_HANDLE_DBC, retcode);
@@ -258,35 +259,42 @@ void NetworkManager::runDB()
 			case DB_EVENT::DE_LOGIN: {
 				DB_EVENT_LOGIN* p = dynamic_cast<DB_EVENT_LOGIN*>(ev.get());
 
-				EXP_OVERLAPPED* exp = new EXP_OVERLAPPED{ EXP_OVERLAPPED::OP_DB_LOGIN };
-
-				std::string str = "SELECT user_pos_x, user_pos_y FROM user_table WHERE user_id = \'" + std::string(p->login_id) + "\'";
+				std::string str = "EXEC GetUser @user_id = \'" + std::string(p->login_id) + "\';";
 				retcode = SQLExecDirectA(hstmt, (SQLCHAR*)str.c_str(), SQL_NTS);
 				if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO) {
-					SQLSMALLINT pos_x, pos_y;
-					SQLLEN l_px = 0, l_py = 0;
+					SQLSMALLINT pos_x, pos_y, level, max_hp, hp, exp;
+					SQLLEN l_px = 0, l_py = 0, l_level = 0, l_max_hp = 0, l_hp = 0, l_exp = 0;
 
 					// Bind columns 1, 2
 					retcode = SQLBindCol(hstmt, 1, SQL_C_SHORT, &pos_x, 10, &l_px);
 					retcode = SQLBindCol(hstmt, 2, SQL_C_SHORT, &pos_y, 10, &l_py);
+					retcode = SQLBindCol(hstmt, 3, SQL_C_SHORT, &level, 10, &l_level);
+					retcode = SQLBindCol(hstmt, 4, SQL_C_SHORT, &max_hp, 10, &l_max_hp);
+					retcode = SQLBindCol(hstmt, 5, SQL_C_SHORT, &hp, 10, &l_hp);
+					retcode = SQLBindCol(hstmt, 6, SQL_C_SHORT, &exp, 10, &l_exp);
 
 					retcode = SQLFetch(hstmt);	// 한개만 읽어온다.
 
+					EXP_EXP_OVER* ex = new EXP_EXP_OVER{ p->login_id, pos_x, pos_y, level, max_hp, hp, exp };
 					if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO) {	// 성공
 						//cout << p->obj_id << ":" << p->login_id << " - 로그인 성공" << endl;
-						strcpy_s(exp->rw_buf, p->login_id);			// 여기다 이름 저장하고
-						exp->ai_target_obj = MAKELONG(pos_x, pos_y);	// 여기다 위치 저장하자
+						strcpy_s(ex->exp_over.rw_buf, p->login_id);			// 여기다 이름 저장하고
+						ex->x = pos_x;
+						ex->y = pos_y;
+						ex->level = level;
+						ex->max_hp = max_hp;
+						ex->hp = hp;
+						ex->exp = exp;
 					}
 					else {	// 실패 (없는 ID)
 						//cout << p->obj_id << ":" << p->login_id << " - 로그인 실패" << endl;
-						exp->rw_buf[0] = 0;	// null 문자로 만들어서 실패를 알린다.
+						ex->exp_over.rw_buf[0] = 0;	// null 문자로 만들어서 실패를 알린다.
 					}
-					PostQueuedCompletionStatus(handle_iocp, 1, p->obj_id, &exp->wsaover);
+					PostQueuedCompletionStatus(handle_iocp, 1, p->obj_id, &ex->exp_over.wsaover);
 				}
 				else {	// SQL 쿼리 실패시 SQL_ERROR
 					std::cerr << "ERROR::Query 실패" << std::endl;
 					disp_error(hstmt, SQL_HANDLE_STMT, retcode);
-					delete exp;
 					exit(-1);
 				}
 
@@ -298,8 +306,11 @@ void NetworkManager::runDB()
 			case DB_EVENT::DE_SAVE: {
 				DB_EVENT_SAVE* p = dynamic_cast<DB_EVENT_SAVE*>(ev.get());
 
-				std::string str = "UPDATE user_table SET user_pos_x = " + std::to_string(p->pos_x) + ", user_pos_y = "
-					+ std::to_string(p->pos_y) + " WHERE user_id = \'" + p->login_id + "\'";
+				//std::string str = "UPDATE user_table SET user_pos_x = " + std::to_string(p->pos_x) + ", user_pos_y = "
+				//	+ std::to_string(p->pos_y) + " WHERE user_id = \'" + p->login_id + "\'";
+				std::string str = "EXEC UpdateUser @user_id = \'" + std::string(p->login_id) + "\', @user_pos_x = " + std::to_string(p->pos_x) +
+					", @user_pos_y = " + std::to_string(p->pos_y) + ", @user_level = " + std::to_string(p->level) + ", @user_max_hp = " + std::to_string(p->max_hp) +
+					", @user_hp = " + std::to_string(p->hp) + ", @user_exp = " + std::to_string(p->exp) + ";";
 				retcode = SQLExecDirectA(hstmt, (SQLCHAR*)str.c_str(), SQL_NTS);
 				if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO) {
 					std::cout << p->obj_id << ": 위치 저장 성공" << std::endl;

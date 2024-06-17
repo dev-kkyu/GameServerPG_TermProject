@@ -23,3 +23,18 @@ public:
 
 };
 
+class EXP_EXP_OVER
+{
+public:
+	EXP_OVERLAPPED exp_over;
+
+	// id´Â rw_buf¿¡
+	short x, y;
+	short level;
+	int max_hp;
+	int hp;
+	int exp;
+
+public:
+	EXP_EXP_OVER(const char* name, short x, short y, short level, int max_hp, int hp, int exp);
+};

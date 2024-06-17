@@ -46,13 +46,17 @@ public:
 
 struct DB_EVENT_SAVE : public DB_EVENT
 {
-	DB_EVENT_SAVE(int obj_id, const char* name, short x, short y);
+	DB_EVENT_SAVE(int obj_id, const char* name, short x, short y, short level, int max_hp, int hp, int exp);
 	virtual ~DB_EVENT_SAVE();
 
 public:
 	char login_id[NAME_SIZE];
 	short pos_x;
 	short pos_y;
+	short level;
+	int max_hp;
+	int hp;
+	int exp;
 
 };
 

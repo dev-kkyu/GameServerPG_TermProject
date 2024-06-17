@@ -212,7 +212,7 @@ void GameFramework::disconnect(int c_id)
 		closesocket(objects[c_id].socket);
 
 		// DB에 저장
-		auto ptr = std::make_shared<DB_EVENT_SAVE>(c_id, objects[c_id].name, objects[c_id].x, objects[c_id].y);
+		auto ptr = std::make_shared<DB_EVENT_SAVE>(c_id, objects[c_id].name, objects[c_id].x, objects[c_id].y, objects[c_id].level, objects[c_id].max_hp, objects[c_id].hp, objects[c_id].exp);
 		db_queue.push(ptr);		// DB큐에 넣어서 이름을 확인해 준다...
 	}
 
@@ -300,14 +300,18 @@ void GameFramework::callbackPlayerMove(int npc_id, int p_id)
 	objects[npc_id].lua_lock.unlock();
 }
 
-void GameFramework::callbackDBLogin(int c_id, const char* name, int xy)
+void GameFramework::callbackDBLogin(int c_id, EXP_EXP_OVER* ex)
 {
-	if (name[0]) {	// 실패한 로그인은 0번인덱스에 0 넣어둠
-		strcpy_s(objects[c_id].name, name);
+	if (ex->exp_over.rw_buf[0]) {	// 실패한 로그인은 0번인덱스에 0 넣어둠
+		strcpy_s(objects[c_id].name, ex->exp_over.rw_buf);
 		{
 			std::lock_guard<std::mutex> ll{ objects[c_id].socket_lock };
-			objects[c_id].x = objects[c_id].start_x = LOWORD(xy);		// 여기에 넣어줬다.
-			objects[c_id].y = objects[c_id].start_y = HIWORD(xy);
+			objects[c_id].x = objects[c_id].start_x = ex->x;		// 여기에 넣어줬다.
+			objects[c_id].y = objects[c_id].start_y = ex->y;
+			objects[c_id].level = ex->level;
+			objects[c_id].max_hp = ex->max_hp;
+			objects[c_id].hp = ex->hp;
+			objects[c_id].exp = ex->exp;
 			objects[c_id].state = Session::ST_INGAME;
 		}
 
