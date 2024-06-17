@@ -1,5 +1,12 @@
 #include "GameFramework.h"
 
+#include <iostream>
+
+#include "Dependencies/include/lua.hpp"
+#pragma comment(lib, "Dependencies/lua54.lib")
+
+GameFramework* GameFramework::instance = nullptr;
+
 std::pair<int, int> SECTOR::getSectorIndex(int pos_x, int pos_y)
 {
 	int ret_x = pos_x / GameFramework::SECTOR_RANGE;
@@ -7,9 +14,108 @@ std::pair<int, int> SECTOR::getSectorIndex(int pos_x, int pos_y)
 	return { ret_x, ret_y };
 }
 
+int GameFramework::API_get_x(lua_State* L)
+{
+	int user_id =
+		(int)lua_tointeger(L, -1);	// 인자로 받은것
+	lua_pop(L, 2);					// 루아에서 올린 함수와 함수의 인자가 총 2개
+	int x = instance->objects[user_id].x;
+	lua_pushnumber(L, x);			// 리턴할 것
+	return 1;
+}
+
+int GameFramework::API_get_y(lua_State* L)
+{
+	int user_id =
+		(int)lua_tointeger(L, -1);
+	lua_pop(L, 2);
+	int y = instance->objects[user_id].y;
+	lua_pushnumber(L, y);
+	return 1;
+}
+
+int GameFramework::API_SendMessage(lua_State* L)
+{
+	int my_id = (int)lua_tointeger(L, -3);		// npc
+	int user_id = (int)lua_tointeger(L, -2);	// player
+	char* mess = (char*)lua_tostring(L, -1);
+
+	lua_pop(L, 4);
+
+	instance->objects[user_id].send_chat_packet(instance->objects[my_id], mess);
+	return 0;
+}
+
+int GameFramework::API_RunAway(lua_State* L)
+{
+	//int my_id = (int)lua_tointeger(L, -3);		// npc
+	//int user_id = (int)lua_tointeger(L, -2);	// player
+	//char* mess = (char*)lua_tostring(L, -1);
+
+	//lua_pop(L, 4);
+
+	//TIMER_EVENT ev{ my_id, chrono::system_clock::now(), EV_RANDOM_MOVE, user_id };
+	//timer_queue.push(ev);
+	//ev.wakeup_time = chrono::system_clock::now() + 1s;
+	//timer_queue.push(ev);
+	//ev.wakeup_time = chrono::system_clock::now() + 2s;
+	//timer_queue.push(ev);
+	//ev.wakeup_time = chrono::system_clock::now() + 3s;
+	//ev.event_id = EV_AI_BYE;
+	//timer_queue.push(ev);
+
+	//strcpy_s(clients[my_id]._ai_msg, mess);
+
+	////clients[user_id].send_chat_packet(my_id, mess);
+	return 0;
+}
+
+void GameFramework::setStaticInstance(GameFramework& instance)
+{
+	GameFramework::instance = &instance;
+}
+
 GameFramework::GameFramework(const HANDLE& h_iocp)
 	: iocp_handle{ h_iocp }
 {
+}
+
+void GameFramework::initializeNPC()
+{
+	std::cout << "NPC intialize begin.\n";
+	for (int i = MAX_USER; i < MAX_USER + MAX_NPC; ++i) {
+		objects[i].x = rand() % W_WIDTH;
+		objects[i].y = rand() % W_HEIGHT;
+
+		// NPC도 최초, 이동할 때 섹터가 정해져야 한다.
+		// 섹터 위치 삽입
+		{
+			auto s_idx = SECTOR::getSectorIndex(objects[i].x, objects[i].y);
+			objects[i].sec_idx = s_idx;
+			sectors[s_idx.first][s_idx.second].object_list.insert(i);
+		}
+
+
+		objects[i].id = i;
+		sprintf_s(objects[i].name, "NPC%d", i);
+		objects[i].state = Session::ST_INGAME;
+
+		auto L = objects[i].s_Lua = luaL_newstate();
+		luaL_openlibs(L);
+		luaL_loadfile(L, "npc.lua");
+		lua_pcall(L, 0, 0, 0);
+
+		lua_getglobal(L, "set_uid");
+		lua_pushnumber(L, i);
+		lua_pcall(L, 1, 0, 0);
+		// lua_pop(L, 1);// eliminate set_uid from stack after call
+
+		lua_register(L, "API_RunAway", API_RunAway);
+		lua_register(L, "API_SendMessage", API_SendMessage);
+		lua_register(L, "API_get_x", API_get_x);
+		lua_register(L, "API_get_y", API_get_y);
+	}
+	std::cout << "NPC initialize end.\n";
 }
 
 int GameFramework::getNewClientID()

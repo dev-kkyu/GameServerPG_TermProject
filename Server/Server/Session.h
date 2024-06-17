@@ -34,7 +34,7 @@ public:
 	std::unordered_set<int> view_list;
 	std::mutex view_lock;
 
-	lua_State* s_ua;
+	lua_State* s_Lua;
 	std::mutex lua_lock;
 	char ai_msg[BUF_SIZE];
 

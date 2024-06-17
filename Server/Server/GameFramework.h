@@ -20,6 +20,14 @@ private:
 	static constexpr int VIEW_RANGE = 5;
 	static constexpr int SECTOR_RANGE = 20;
 
+	static GameFramework* instance;
+
+private:
+	static int API_get_x(lua_State* L);
+	static int API_get_y(lua_State* L);
+	static int API_SendMessage(lua_State* L);
+	static int API_RunAway(lua_State* L);
+
 private:
 	const HANDLE& iocp_handle;
 
@@ -27,7 +35,11 @@ private:
 	SECTOR sectors[W_WIDTH / SECTOR_RANGE][W_HEIGHT / SECTOR_RANGE];
 
 public:
+	static void setStaticInstance(GameFramework& instance);
+
 	GameFramework(const HANDLE& h_iocp);
+
+	void initializeNPC();
 
 	int getNewClientID();
 	void clientStart(int c_id, ::SOCKET c_socket);

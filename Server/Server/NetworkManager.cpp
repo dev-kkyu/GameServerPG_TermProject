@@ -12,6 +12,8 @@
 NetworkManager::NetworkManager(unsigned short port)
 	: gameFramework{ handle_iocp }
 {
+	gameFramework.setStaticInstance(gameFramework);
+
 	::WSADATA WSAData;
 	::WSAStartup(MAKEWORD(2, 2), &WSAData);
 	server_socket = WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);
@@ -22,7 +24,7 @@ NetworkManager::NetworkManager(unsigned short port)
 	::bind(server_socket, reinterpret_cast<SOCKADDR*>(&server_addr), sizeof(server_addr));
 	::listen(server_socket, SOMAXCONN);
 
-	// Todo :  NPC 초기화 함수 호출
+	gameFramework.initializeNPC();
 
 	handle_iocp = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 0);	// 마지막 인자 0이면 hardware_concurrency 값
 	::CreateIoCompletionPort(reinterpret_cast<HANDLE>(server_socket), handle_iocp, 99999, 0);		// server socket에 accept 완료 통지를 위하여 등록 (키는 안쓰는 키)
