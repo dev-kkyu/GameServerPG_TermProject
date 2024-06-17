@@ -13,6 +13,17 @@ Session::Session()
 
 	prev_remain = 0;
 	last_move_time = 0;
+
+	hp = 100;				// 이 설정은 플레이어만 유효
+	max_hp = 100;
+	exp = 0;
+	level = 1;
+
+	isDead = false;
+
+	target_obj = -1;
+
+	start_x = start_y = 0;
 }
 
 void Session::doRecv()
@@ -39,6 +50,24 @@ void Session::send_login_info_packet()
 	p.type = SC_LOGIN_INFO;
 	p.x = x;
 	p.y = y;
+
+	p.hp = hp;
+	p.max_hp = max_hp;
+	p.exp = exp;
+	p.level = level;
+
+	doSend(&p);
+}
+
+void Session::send_stat_change_packet()
+{
+	SC_STAT_CHANGE_PACKET p;
+	p.size = sizeof(SC_STAT_CHANGE_PACKET);
+	p.type = SC_STAT_CHANGE;
+	p.hp = hp;
+	p.max_hp = max_hp;
+	p.exp = exp;
+	p.level = level;
 	doSend(&p);
 }
 

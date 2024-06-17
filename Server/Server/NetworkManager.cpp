@@ -143,6 +143,17 @@ void NetworkManager::runWorker()
 			delete exp_over;
 			break;
 		}
+		case EXP_OVERLAPPED::OP_RESPAWN: {
+			gameFramework.doRespawn(static_cast<int>(key));
+			delete exp_over;
+			break;
+		}
+		case EXP_OVERLAPPED::OP_HP_CHARGE: {
+			gameFramework.doHpCharge(static_cast<int>(key));
+			delete exp_over;
+			break;
+		}
+
 		case EXP_OVERLAPPED::OP_DB_LOGIN: {
 			gameFramework.callbackDBLogin(static_cast<int>(key), exp_over->rw_buf, exp_over->ai_target_obj);
 			delete exp_over;
@@ -175,6 +186,16 @@ void NetworkManager::runTimer()
 			case TIMER_EVENT::TE_AI_BYE: {
 				EXP_OVERLAPPED* ov = new EXP_OVERLAPPED{ EXP_OVERLAPPED::OP_AI_BYE };
 				ov->ai_target_obj = ev.target_id;
+				PostQueuedCompletionStatus(handle_iocp, 1, ev.obj_id, &ov->wsaover);
+				break;
+			}
+			case TIMER_EVENT::TE_RESPAWN: {
+				EXP_OVERLAPPED* ov = new EXP_OVERLAPPED{ EXP_OVERLAPPED::OP_RESPAWN };
+				PostQueuedCompletionStatus(handle_iocp, 1, ev.obj_id, &ov->wsaover);
+				break;
+			}
+			case TIMER_EVENT::TE_HP_CHARGE: {
+				EXP_OVERLAPPED* ov = new EXP_OVERLAPPED{ EXP_OVERLAPPED::OP_HP_CHARGE };
 				PostQueuedCompletionStatus(handle_iocp, 1, ev.obj_id, &ov->wsaover);
 				break;
 			}

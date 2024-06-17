@@ -58,6 +58,8 @@ public:
 	void npcBye(int to, int from);	// OP_AI_BYE
 	void callbackPlayerMove(int npc_id, int p_id);	// OP_PLAYER_MOVE -> 플레이어가 움직이면 근처 NPC에게 알리고, 스크립트에서 충돌이면 hello해주는거
 	void callbackDBLogin(int c_id, const char* name, int xy);			// OP_DB_LOGIN
+	void doRespawn(int c_id);
+	void doHpCharge(int c_id);
 
 private:
 	void processPacket(int c_id, char* packet);
@@ -69,6 +71,8 @@ private:	// 헬퍼 함수들
 	bool is_pc(int object_id);
 	bool is_npc(int object_id);
 	bool can_see(int from, int to);
+	bool is_Agro_npc(int object_id);
+	bool is_Peace_npc(int object_id);
 
 };
 

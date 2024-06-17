@@ -8,6 +8,8 @@ constexpr int CHAT_SIZE = 300;
 constexpr int MAX_USER = 10000;
 constexpr int MAX_NPC = 200000;
 
+constexpr int MAX_AGRO = MAX_NPC / 2;	// 추가
+
 constexpr int W_WIDTH = 2000;
 constexpr int W_HEIGHT = 2000;
 
@@ -26,6 +28,8 @@ constexpr char SC_REMOVE_OBJECT = 5;
 constexpr char SC_MOVE_OBJECT = 6;
 constexpr char SC_CHAT = 7;
 constexpr char SC_STAT_CHANGE = 8;
+
+bool isMoveAble(short x, short y);		// 장애물
 
 #pragma pack (push, 1)
 struct CS_LOGIN_PACKET {

@@ -6,7 +6,7 @@
 
 struct TIMER_EVENT
 {
-	enum TIMER_EVENT_TYPE { TE_RANDOM_MOVE, TE_AI_BYE };
+	enum TIMER_EVENT_TYPE { TE_RANDOM_MOVE, TE_AI_BYE, TE_HP_CHARGE, TE_RESPAWN };
 
 	int obj_id;
 	std::chrono::system_clock::time_point wakeup_time;
