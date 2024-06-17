@@ -8,17 +8,17 @@ NetworkManager g_NetworkManager{ PORT_NUM };
 
 void worker_thread()
 {
-	g_NetworkManager.run();
+	g_NetworkManager.runWorker();
 }
 
 void do_timer()
 {
-	// Todo
+	g_NetworkManager.runTimer();
 }
 
 void do_db()
 {
-	// Todo
+	g_NetworkManager.runDB();
 }
 
 int main()

@@ -1,8 +1,16 @@
 #pragma once
 
 #include <WS2tcpip.h>
+#include <concurrent_queue.h>
+#include <concurrent_priority_queue.h>
 
 #include "GameFramework.h"
+#include "EVENTS.h"
+
+#include <sqlext.h>
+
+static void disp_error(SQLHANDLE hHandle, SQLSMALLINT hType, RETCODE RetCode);
+static bool db_error_check(SQLRETURN retcode);
 
 class NetworkManager
 {
@@ -13,6 +21,9 @@ private:
 
 	::HANDLE handle_iocp;
 
+	concurrency::concurrent_priority_queue<TIMER_EVENT> timer_queue;
+	concurrency::concurrent_queue<std::shared_ptr<DB_EVENT>> db_queue;
+
 	GameFramework gameFramework;
 
 public:
@@ -20,7 +31,9 @@ public:
 	NetworkManager(unsigned short port);
 	~NetworkManager();
 
-	void run();
+	void runWorker();
+	void runTimer();
+	void runDB();
 
 };
 

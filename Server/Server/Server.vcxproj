@@ -127,6 +127,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="EVENTS.cpp" />
     <ClCompile Include="EXP_OVERLAPPED.cpp" />
     <ClCompile Include="GameFramework.cpp" />
     <ClCompile Include="main.cpp" />
@@ -134,6 +135,7 @@
     <ClCompile Include="Session.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EVENTS.h" />
     <ClInclude Include="EXP_OVERLAPPED.h" />
     <ClInclude Include="GameFramework.h" />
     <ClInclude Include="NetworkManager.h" />
