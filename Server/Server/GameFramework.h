@@ -34,10 +34,13 @@ public:
 	void processRecv(int c_id, int recv_size);
 	void disconnect(int c_id);
 
+	void tryNpcMove(int npc_id);
+
 private:
 	void processPacket(int c_id, char* packet);
 	void wakeUpNPC(int npc_id, int waker);
 
+	void doNpcRandomMove(int npc_id);
 
 private:	// ÇïÆÛ ÇÔ¼öµé
 	bool is_pc(int object_id);

@@ -93,6 +93,27 @@ void GameFramework::disconnect(int c_id)
 	objects[c_id].state = Session::ST_FREE;
 }
 
+void GameFramework::tryNpcMove(int npc_id)
+{
+	//bool keep_alive = false;
+	for (int j = 0; j < MAX_USER; ++j) {
+		if (objects[j].state != Session::ST_INGAME) continue;
+		if (can_see(npc_id, j)) {
+			//keep_alive = true;
+			doNpcRandomMove(npc_id);		// 여기서 바로 해준다 (한번만 동작)
+			break;
+		}
+	}
+	//if (true == keep_alive) {
+	//	do_npc_random_move(static_cast<int>(key));
+	//	TIMER_EVENT ev{ key, chrono::system_clock::now() + 1s, EV_RANDOM_MOVE, 0 };
+	//	timer_queue.push(ev);
+	//}
+	//else {
+	//	clients[key]._is_active = false;
+	//}
+}
+
 void GameFramework::processPacket(int c_id, char* packet)
 {
 	switch (packet[1]) {
@@ -215,6 +236,98 @@ void GameFramework::wakeUpNPC(int npc_id, int waker)
 	//	return;
 	//TIMER_EVENT ev{ npc_id, chrono::system_clock::now(), EV_RANDOM_MOVE, 0 };
 	//timer_queue.push(ev);
+}
+
+void GameFramework::doNpcRandomMove(int npc_id)
+{
+	Session& npc = objects[npc_id];
+	std::unordered_set<int> old_vl;
+	for (auto& obj : objects) {						// 얘가 주범, npc는 20만.... 섹터 분할이 필요하다.
+		if (Session::ST_INGAME != obj.state) continue;
+		if (true == is_npc(obj.id)) continue;
+		if (true == can_see(npc.id, obj.id))
+			old_vl.insert(obj.id);
+	}
+
+	int x = npc.x;
+	int y = npc.y;
+	switch (rand() % 4) {
+	case 0: if (x < (W_WIDTH - 1)) x++; break;
+	case 1: if (x > 0) x--; break;
+	case 2: if (y < (W_HEIGHT - 1)) y++; break;
+	case 3:if (y > 0) y--; break;
+	}
+	npc.x = x;
+	npc.y = y;
+
+	// 내 좌표에 따른 섹터 위치가 바뀌었으면, 바꿔준다
+	std::pair<int, int> bef_sec = objects[npc_id].sec_idx;
+	std::pair<int, int> aft_sec = SECTOR::getSectorIndex(x, y);
+	if (bef_sec != aft_sec) {
+		sectors[bef_sec.first][bef_sec.second].sector_m.lock();
+		sectors[bef_sec.first][bef_sec.second].object_list.erase(npc_id);
+		sectors[bef_sec.first][bef_sec.second].sector_m.unlock();
+
+		sectors[aft_sec.first][aft_sec.second].sector_m.lock();
+		sectors[aft_sec.first][aft_sec.second].object_list.insert(npc_id);
+		sectors[aft_sec.first][aft_sec.second].sector_m.unlock();
+
+		objects[npc_id].sec_idx = aft_sec;
+	}
+
+	// 좌우상하 1섹터씩 더 보고, 내 근처의 총 9개 섹터를 비교한다
+	std::unordered_set<int> new_vl;
+	for (int i = aft_sec.first - 1; i <= aft_sec.first + 1; ++i) {
+		if (i < 0 or i > W_WIDTH / SECTOR_RANGE - 1)	// 범위를 벗어난 곳은 탐색하지 않는다
+			continue;
+		for (int j = aft_sec.second - 1; j <= aft_sec.second + 1; ++j) {
+			if (j < 0 or j > W_HEIGHT / SECTOR_RANGE - 1)
+				continue;
+			sectors[i][j].sector_m.lock();
+			std::unordered_set<int> sec_lists = sectors[i][j].object_list;
+			sectors[i][j].sector_m.unlock();
+
+			// 새 뷰리스트 생성
+			for (auto p_id : sec_lists) {
+				if (objects[p_id].state != Session::ST_INGAME) continue;
+				if (true == is_npc(p_id)) continue;
+				if (false == can_see(npc_id, p_id)) continue;
+				new_vl.insert(p_id);
+			}
+		}
+	}
+
+	//unordered_set<int> new_vl;
+	//for (auto& obj : clients) {
+	//	if (ST_INGAME != obj._state) continue;
+	//	if (true == is_npc(obj._id)) continue;
+	//	if (true == can_see(npc._id, obj._id))
+	//		new_vl.insert(obj._id);
+	//}
+
+	for (auto pl : new_vl) {
+		if (0 == old_vl.count(pl)) {
+			// 플레이어의 시야에 등장
+			objects[pl].send_add_player_packet(npc);
+		}
+		else {
+			// 플레이어가 계속 보고 있음.
+			objects[pl].send_move_packet(npc);
+		}
+	}
+	///vvcxxccxvvdsvdvds
+	for (auto pl : old_vl) {
+		if (0 == new_vl.count(pl)) {
+			objects[pl].view_lock.lock();
+			if (0 != objects[pl].view_list.count(npc.id)) {
+				objects[pl].view_lock.unlock();
+				objects[pl].send_remove_player_packet(npc.id);
+			}
+			else {
+				objects[pl].view_lock.unlock();
+			}
+		}
+	}
 }
 
 bool GameFramework::is_pc(int object_id)
