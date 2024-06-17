@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "EVENTS.h"
+
 #include "Dependencies/include/lua.hpp"
 #pragma comment(lib, "Dependencies/lua54.lib")
 
@@ -48,25 +50,25 @@ int GameFramework::API_SendMessage(lua_State* L)
 
 int GameFramework::API_RunAway(lua_State* L)
 {
-	//int my_id = (int)lua_tointeger(L, -3);		// npc
-	//int user_id = (int)lua_tointeger(L, -2);	// player
-	//char* mess = (char*)lua_tostring(L, -1);
+	int my_id = (int)lua_tointeger(L, -3);		// npc
+	int user_id = (int)lua_tointeger(L, -2);	// player
+	char* mess = (char*)lua_tostring(L, -1);
 
-	//lua_pop(L, 4);
+	lua_pop(L, 4);
 
-	//TIMER_EVENT ev{ my_id, chrono::system_clock::now(), EV_RANDOM_MOVE, user_id };
-	//timer_queue.push(ev);
-	//ev.wakeup_time = chrono::system_clock::now() + 1s;
-	//timer_queue.push(ev);
-	//ev.wakeup_time = chrono::system_clock::now() + 2s;
-	//timer_queue.push(ev);
-	//ev.wakeup_time = chrono::system_clock::now() + 3s;
-	//ev.event_id = EV_AI_BYE;
-	//timer_queue.push(ev);
+	TIMER_EVENT ev{ my_id, std::chrono::system_clock::now(), TIMER_EVENT::TE_RANDOM_MOVE, user_id };
+	instance->timer_queue.push(ev);
+	ev.wakeup_time = std::chrono::system_clock::now() + std::chrono::seconds{ 1 };
+	instance->timer_queue.push(ev);
+	ev.wakeup_time = std::chrono::system_clock::now() + std::chrono::seconds{ 2 };
+	instance->timer_queue.push(ev);
+	ev.wakeup_time = std::chrono::system_clock::now() + std::chrono::seconds{ 3 };
+	ev.event_id = TIMER_EVENT::TE_AI_BYE;
+	instance->timer_queue.push(ev);
 
-	//strcpy_s(clients[my_id]._ai_msg, mess);
+	strcpy_s(instance->objects[my_id].ai_msg, mess);
 
-	////clients[user_id].send_chat_packet(my_id, mess);
+	//clients[user_id].send_chat_packet(my_id, mess);
 	return 0;
 }
 
@@ -75,8 +77,10 @@ void GameFramework::setStaticInstance(GameFramework& instance)
 	GameFramework::instance = &instance;
 }
 
-GameFramework::GameFramework(const HANDLE& h_iocp)
-	: iocp_handle{ h_iocp }
+GameFramework::GameFramework(const HANDLE& h_iocp,
+	concurrency::concurrent_priority_queue<TIMER_EVENT>& timer_queue,
+	concurrency::concurrent_queue<std::shared_ptr<DB_EVENT>>& db_queue)
+	: iocp_handle{ h_iocp }, timer_queue{ timer_queue }, db_queue{ db_queue }
 {
 }
 
@@ -191,8 +195,8 @@ void GameFramework::disconnect(int c_id)
 		closesocket(objects[c_id].socket);
 
 		// DB에 저장
-		//auto ptr = std::make_shared<DB_EVENT_SAVE>(c_id);
-		//db_queue.push(ptr);		// DB큐에 넣어서 이름을 확인해 준다...
+		auto ptr = std::make_shared<DB_EVENT_SAVE>(c_id, objects[c_id].name, objects[c_id].x, objects[c_id].y);
+		db_queue.push(ptr);		// DB큐에 넣어서 이름을 확인해 준다...
 	}
 
 	std::lock_guard<std::mutex> ll(objects[c_id].socket_lock);
@@ -307,8 +311,8 @@ void GameFramework::processPacket(int c_id, char* packet)
 	case CS_LOGIN: {
 		CS_LOGIN_PACKET* p = reinterpret_cast<CS_LOGIN_PACKET*>(packet);
 
-		//auto ptr = std::make_shared<DB_EVENT_LOGIN>(c_id, p->name);
-		//db_queue.push(ptr);		// DB큐에 넣어서 이름을 확인해 준다...
+		auto ptr = std::make_shared<DB_EVENT_LOGIN>(c_id, p->name);
+		db_queue.push(ptr);		// DB큐에 넣어서 이름을 확인해 준다...
 
 		break;
 	}

@@ -4,6 +4,10 @@
 
 #include "Session.h"
 
+#include "EVENTS.h"
+#include <concurrent_queue.h>
+#include <concurrent_priority_queue.h>
+
 class SECTOR
 {
 public:
@@ -30,6 +34,8 @@ private:
 
 private:
 	const HANDLE& iocp_handle;
+	concurrency::concurrent_priority_queue<TIMER_EVENT>& timer_queue;
+	concurrency::concurrent_queue<std::shared_ptr<DB_EVENT>>& db_queue;
 
 	std::array<Session, MAX_USER + MAX_NPC> objects;
 	SECTOR sectors[W_WIDTH / SECTOR_RANGE][W_HEIGHT / SECTOR_RANGE];
@@ -37,7 +43,9 @@ private:
 public:
 	static void setStaticInstance(GameFramework& instance);
 
-	GameFramework(const HANDLE& h_iocp);
+	GameFramework(const HANDLE& h_iocp,
+		concurrency::concurrent_priority_queue<TIMER_EVENT>& timer_queue,
+		concurrency::concurrent_queue<std::shared_ptr<DB_EVENT>>& db_queue);
 
 	void initializeNPC();
 

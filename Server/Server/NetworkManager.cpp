@@ -38,7 +38,7 @@ bool db_error_check(SQLRETURN retcode)
 }
 
 NetworkManager::NetworkManager(unsigned short port)
-	: gameFramework{ handle_iocp }
+	: gameFramework{ handle_iocp, timer_queue, db_queue }
 {
 	gameFramework.setStaticInstance(gameFramework);
 
