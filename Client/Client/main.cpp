@@ -581,14 +581,14 @@ int main()
 				}
 				if (-1 != direction) {
 					auto now_time = chrono::steady_clock::now();
-					//if (now_time >= last_move + 1s) {		// 1초에 한번만 이동
-						//last_move = now_time;
-					CS_MOVE_PACKET p;
-					p.size = sizeof(p);
-					p.type = CS_MOVE;
-					p.direction = direction;
-					send_packet(&p);
-					//}
+					if (now_time >= last_move + 800ms) {		// 1초에 한번만 이동
+						last_move = now_time;
+						CS_MOVE_PACKET p;
+						p.size = sizeof(p);
+						p.type = CS_MOVE;
+						p.direction = direction;
+						send_packet(&p);
+					}
 				}
 
 			}
