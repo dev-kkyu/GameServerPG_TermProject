@@ -21,7 +21,7 @@ class GameFramework
 {
 private:
 	friend class SECTOR;
-	static constexpr int VIEW_RANGE = 5;
+	static constexpr int VIEW_RANGE = 7;
 	static constexpr int SECTOR_RANGE = 20;
 
 	static GameFramework* instance;
