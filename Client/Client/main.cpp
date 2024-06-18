@@ -284,7 +284,8 @@ void ProcessPacket(char* ptr)
 		int other_id = my_packet->id;
 		if (other_id == g_myid) {
 			avatar.set_chat(my_packet->mess);
-			std::cout << "공격받음 : " << my_packet->mess << std::endl;
+			if (my_packet->mess[0] == '-')
+				std::cout << "공격받음 : " << my_packet->mess << std::endl;
 		}
 		else {
 			players[other_id].set_chat(my_packet->mess);
