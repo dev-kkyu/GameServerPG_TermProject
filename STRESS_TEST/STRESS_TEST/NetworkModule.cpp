@@ -106,8 +106,8 @@ void DisconnectClient(int ci)
 
 void SendPacket(int cl, void* packet)
 {
-	int psize = reinterpret_cast<unsigned char*>(packet)[0];
-	int ptype = reinterpret_cast<unsigned char*>(packet)[1];
+	int psize = reinterpret_cast<unsigned short*>(packet)[0];
+	int ptype = reinterpret_cast<unsigned char*>(packet)[2];
 	OverlappedEx* over = new OverlappedEx;
 	over->event_type = OP_SEND;
 	memcpy(over->IOCP_buf, packet, psize);
@@ -377,6 +377,8 @@ void InitializeNetwork()
 	for (auto& cl : client_map) cl = -1;
 	num_connections = 0;
 	last_connect_time = high_resolution_clock::now();
+
+	setlocale(LC_ALL, "korean");
 
 	WSADATA	wsadata;
 	WSAStartup(MAKEWORD(2, 2), &wsadata);

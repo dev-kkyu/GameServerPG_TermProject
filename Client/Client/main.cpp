@@ -32,6 +32,10 @@ int		g_my_level;
 sf::RenderWindow* g_window;
 sf::Font g_font;
 
+sf::Text g_Text;	// 채팅 입력용
+sf::RectangleShape g_Rect;
+bool isEntered = false;
+
 class OBJECT {
 private:
 	bool m_showing;
@@ -164,6 +168,15 @@ void client_initialize()
 	tile_stone = OBJECT{ *board, 283, 3, TILE_WIDTH, TILE_WIDTH, *kirby };
 	avatar = OBJECT{ *kirby, 8, 11, 20, 19, *kirby };
 	avatar.move(4, 4);
+
+	g_Text.setFont(g_font);
+	g_Text.setFillColor(sf::Color(255, 255, 255));
+	g_Text.setStyle(sf::Text::Bold);
+	g_Text.setPosition(50.f, 800.f);
+
+	g_Rect.setPosition(30.f, 750.f);
+	g_Rect.setSize(sf::Vector2f(400, 100));
+	g_Rect.setFillColor(sf::Color(0, 0, 0, 127));
 }
 
 void client_finish()
@@ -427,11 +440,15 @@ void client_main()
 
 		g_window->draw(expText);
 	}
+	if (isEntered) {
+		g_window->draw(g_Rect);
+		g_window->draw(g_Text);
+	}
 }
 
 void send_packet(void* packet)
 {
-	unsigned char* p = reinterpret_cast<unsigned char*>(packet);
+	unsigned short* p = reinterpret_cast<unsigned short*>(packet);
 	size_t sent = 0;
 	s_socket.send(packet, p[0], sent);
 }
@@ -483,6 +500,46 @@ int main()
 		{
 			if (event.type == sf::Event::Closed)
 				window.close();
+			if (event.type == sf::Event::TextEntered) {
+				if (isEntered) {
+					static std::string chatInput;
+					if (event.text.unicode == '\r' || event.text.unicode == '\n') // 엔터 키 처리
+					{
+						if (not chatInput.empty()) {
+							// 엔터 키 입력 시 현재 입력된 텍스트를 처리
+							std::cout << "User entered: " << chatInput << std::endl;
+
+							// 전송
+							CS_CHAT_PACKET packet;
+							packet.size = sizeof(packet);
+							packet.type = CS_CHAT;
+							strcpy_s(packet.mess, chatInput.c_str());
+							send_packet(&packet);
+						}
+
+						chatInput.clear(); // 입력 초기화
+						g_Text.setString(chatInput);
+						isEntered = false;
+					}
+					else if (event.text.unicode < 128) // ASCII 문자만 허용
+					{
+						if (event.text.unicode == '\b') // 백스페이스 처리
+						{
+							if (!chatInput.empty())
+								chatInput.pop_back();
+						}
+						else
+						{
+							chatInput += static_cast<char>(event.text.unicode);
+						}
+						g_Text.setString(chatInput);
+					}
+				}
+				else {
+					if (event.text.unicode == '\r' || event.text.unicode == '\n') // 엔터 키 처리
+						isEntered = true;
+				}
+			}
 			if (event.type == sf::Event::KeyPressed) {
 				int direction = -1;
 				switch (event.key.code) {
@@ -520,11 +577,11 @@ int main()
 					auto now_time = chrono::steady_clock::now();
 					//if (now_time >= last_move + 1s) {		// 1초에 한번만 이동
 						//last_move = now_time;
-						CS_MOVE_PACKET p;
-						p.size = sizeof(p);
-						p.type = CS_MOVE;
-						p.direction = direction;
-						send_packet(&p);
+					CS_MOVE_PACKET p;
+					p.size = sizeof(p);
+					p.type = CS_MOVE;
+					p.direction = direction;
+					send_packet(&p);
 					//}
 				}
 
