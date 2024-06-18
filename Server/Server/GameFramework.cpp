@@ -621,6 +621,7 @@ void GameFramework::doNpcRandomMove(int npc_id)
 		int x = npc.x;
 		int y = npc.y;
 
+		// 타겟이 있을시 타켓으로 이동
 		if (objects[npc_id].target_obj >= 0) {
 			int dx = objects[objects[npc_id].target_obj].x - objects[npc_id].x;
 			int dy = objects[objects[npc_id].target_obj].y - objects[npc_id].y;
