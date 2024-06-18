@@ -24,8 +24,8 @@ extern HWND		hWnd;
 const static int MAX_TEST = MAX_USER;
 const static int MAX_CLIENTS = MAX_USER * 2 + MAX_NPC;
 const static int INVALID_ID = -1;
-const static int MAX_PACKET_SIZE = 255;
-const static int MAX_BUFF_SIZE = 255;
+const static int MAX_PACKET_SIZE = BUF_SIZE;
+const static int MAX_BUFF_SIZE = BUF_SIZE;
 
 #pragma comment (lib, "ws2_32.lib")
 
