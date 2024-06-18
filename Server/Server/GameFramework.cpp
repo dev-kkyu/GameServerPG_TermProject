@@ -209,6 +209,11 @@ void GameFramework::disconnect(int c_id)
 			if (pl.id == c_id) continue;
 			pl.send_remove_player_packet(c_id);
 		}
+
+		for (int t : objects[c_id].be_targeted) {
+			objects[t].target_obj = -1;
+		}
+
 		closesocket(objects[c_id].socket);
 
 		// DB에 저장
@@ -615,11 +620,41 @@ void GameFramework::doNpcRandomMove(int npc_id)
 	if (is_Agro_npc(npc_id) and not npc.isDead) {		// Agro NPC만 RandomMove 적용
 		int x = npc.x;
 		int y = npc.y;
-		switch (rand() % 4) {
-		case 0: if (x < (W_WIDTH - 1) and isMoveAble(x + 1, y)) x++; break;
-		case 1: if (x > 0 and isMoveAble(x - 1, y)) x--; break;
-		case 2: if (y < (W_HEIGHT - 1) and isMoveAble(x, y + 1)) y++; break;
-		case 3:if (y > 0 and isMoveAble(x, y - 1)) y--; break;
+
+		if (objects[npc_id].target_obj >= 0) {
+			int dx = objects[objects[npc_id].target_obj].x - objects[npc_id].x;
+			int dy = objects[objects[npc_id].target_obj].y - objects[npc_id].y;
+
+			if (std::abs(dx) >= std::abs(dy)) {
+				if (dx > 0)
+					++x;
+				else
+					--x;
+			}
+			else {
+				if (dy > 0)
+					++y;
+				else
+					--y;
+			}
+			if (not isMoveAble(x, y)) {
+				x = npc.x;
+				y = npc.y;
+				switch (rand() % 4) {
+				case 0: if (x < (W_WIDTH - 1) and isMoveAble(x + 1, y)) x++; break;
+				case 1: if (x > 0 and isMoveAble(x - 1, y)) x--; break;
+				case 2: if (y < (W_HEIGHT - 1) and isMoveAble(x, y + 1)) y++; break;
+				case 3:if (y > 0 and isMoveAble(x, y - 1)) y--; break;
+				}
+			}
+		}
+		else {
+			switch (rand() % 4) {
+			case 0: if (x < (W_WIDTH - 1) and isMoveAble(x + 1, y)) x++; break;
+			case 1: if (x > 0 and isMoveAble(x - 1, y)) x--; break;
+			case 2: if (y < (W_HEIGHT - 1) and isMoveAble(x, y + 1)) y++; break;
+			case 3:if (y > 0 and isMoveAble(x, y - 1)) y--; break;
+			}
 		}
 		npc.x = x;
 		npc.y = y;
