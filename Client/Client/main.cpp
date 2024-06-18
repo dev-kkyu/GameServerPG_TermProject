@@ -115,6 +115,7 @@ public:
 		}
 	}
 	void set_name(const char str[]) {
+		strcpy_s(name, str);
 		m_name.setFont(g_font);
 		m_name.setString(str);
 		if (id < MAX_USER) m_name.setFillColor(sf::Color(0, 0, 0));		// 플레이어 id는 검정으로 표시
@@ -283,9 +284,13 @@ void ProcessPacket(char* ptr)
 		int other_id = my_packet->id;
 		if (other_id == g_myid) {
 			avatar.set_chat(my_packet->mess);
+			std::cout << "공격받음 : " << my_packet->mess << std::endl;
 		}
 		else {
 			players[other_id].set_chat(my_packet->mess);
+			if (0 == strncmp(players[other_id].name, "AGRO", 4) or 0 == strncmp(players[other_id].name, "PEACE", 5)) {
+				std::cout << avatar.name << "가 " << players[other_id].name << "을 공격하여 " << g_my_level * 30 << "의 데미지를 입혔습니다." << std::endl;
+			}
 		}
 
 		break;
@@ -297,7 +302,7 @@ void ProcessPacket(char* ptr)
 		g_my_level = my_packet->level;
 		g_my_max_hp = my_packet->max_hp;
 
-		std::cout << "stat changed : id - " << g_myid << ", exp - " << g_my_exp << ", hp - " << g_my_hp << ", level - " << g_my_level << ", max_hp - " << g_my_max_hp << std::endl;
+		std::cout << "상태 변경! : id - " << g_myid << ", exp - " << g_my_exp << ", hp - " << g_my_hp << ", level - " << g_my_level << ", max_hp - " << g_my_max_hp << std::endl;
 
 		break;
 	}
@@ -507,7 +512,7 @@ int main()
 					{
 						if (not chatInput.empty()) {
 							// 엔터 키 입력 시 현재 입력된 텍스트를 처리
-							std::cout << "User entered: " << chatInput << std::endl;
+							//std::cout << "User entered: " << chatInput << std::endl;
 
 							// 전송
 							CS_CHAT_PACKET packet;
