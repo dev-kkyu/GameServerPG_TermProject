@@ -405,6 +405,29 @@ void GameFramework::processPacket(int c_id, char* packet)
 
 		break;
 	}
+	case CS_CHAT: {
+		CS_CHAT_PACKET* p = reinterpret_cast<CS_CHAT_PACKET*>(packet);
+
+		objects[c_id].view_lock.lock();
+		std::unordered_set<int> near_list = objects[c_id].view_list;
+		objects[c_id].view_lock.unlock();
+
+		SC_CHAT_PACKET packet;
+		packet.type = SC_CHAT;
+		packet.size = sizeof(packet);
+		packet.id = c_id;
+		strcpy_s(packet.mess, p->mess);
+
+		objects[c_id].doSend(&packet);
+		for (auto& pl : near_list) {
+			auto& cpl = objects[pl];
+			if (is_pc(pl)) {
+				objects[pl].doSend(&packet);
+			}
+		}
+
+		break;
+	}
 	case CS_MOVE: {
 		if (objects[c_id].sec_idx.first < 0 or objects[c_id].sec_idx.second < 0) {
 			closesocket(objects[c_id].socket);	// 로그인이 되지 않은 클라이언트의 움직임이 관찰되면 지체없이 close한다.
